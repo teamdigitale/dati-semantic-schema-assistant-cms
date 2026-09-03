@@ -1,0 +1,13 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - jobs/ingestion/Dockerfile
+      - -t
+      - $_IMAGE
+      - .
+images:
+  - $_IMAGE
+substitutions:
+  _IMAGE: europe-west8-docker.pkg.dev/istat-ndc-schema-ass-cms-dev/schema-assistant/ingestion:dev

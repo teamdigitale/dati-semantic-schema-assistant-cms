@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      verify_docker:
+        description: "Build changed images without pushing them."
+        required: false
+        type: boolean
+        default: true
+      base_sha:
+        description: "Base commit used for module detection."
+        required: false
+        type: string
+        default: ""
+      head_sha:
+        description: "Head commit used for module detection."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python quality and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.26"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Verify dependency lock
+        run: uv lock --check
+
+      - name: Synchronize test environment
+        run: uv sync --frozen --all-extras
+
+      - name: Run Ruff lint
+        run: uv run --frozen ruff check .
+
+      - name: Check Ruff formatting
+        run: uv run --frozen ruff format --check .
+
+      - name: Run Python tests
+        run: uv run --frozen pytest
+
+  frontend:
+    name: Angular build and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22.17.1"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+          package-manager-cache: true
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Angular application
+        run: npm run build -- --no-progress
+
+      - name: Run frontend tests headlessly
+        run: npm test -- --watch=false --browsers=ChromeHeadless --no-progress
+
+  terraform:
+    name: Terraform static validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: "1.14.6"
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive infra
+
+      - name: Initialize Terraform without a backend
+        run: terraform -chdir=infra/envs/dev init -backend=false -input=false
+
+      - name: Validate Terraform
+        run: terraform -chdir=infra/envs/dev validate
+
+  detect-images:
+    name: Detect changed images
+    if: github.event_name == 'pull_request' || inputs.verify_docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.changes.outputs.web }}
+      agent: ${{ steps.changes.outputs.agent }}
+      ingestion: ${{ steps.changes.outputs.ingestion }}
+      any: ${{ steps.changes.outputs.any }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect affected modules
+        id: changes
+        env:
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ inputs.head_sha || github.sha }}
+        run: bash .github/scripts/detect-modules.sh "$BASE_SHA" "$HEAD_SHA"
+
+  docker:
+    name: Verify changed Docker images
+    needs: detect-images
+    if: needs.detect-images.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build web image
+        if: needs.detect-images.outputs.web == 'true'
+        run: docker build --file apps/web/Dockerfile --tag schema-assistant-web:ci .
+
+      - name: Build agent image
+        if: needs.detect-images.outputs.agent == 'true'
+        run: docker build --file services/agent/Dockerfile --tag schema-assistant-agent:ci .
+
+      - name: Build ingestion image
+        if: needs.detect-images.outputs.ingestion == 'true'
+        run: docker build --file jobs/ingestion/Dockerfile --tag schema-assistant-ingestion:ci .

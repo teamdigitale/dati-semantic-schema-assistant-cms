@@ -1,0 +1,16 @@
+substitutions:
+  _IMAGE: europe-west8-docker.pkg.dev/istat-ndc-schema-ass-cms-dev/schema-assistant/agent:dev
+
+steps:
+  - id: build-agent
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - services/agent/Dockerfile
+      - -t
+      - ${_IMAGE}
+      - .
+
+images:
+  - ${_IMAGE}

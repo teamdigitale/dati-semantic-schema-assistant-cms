@@ -1,0 +1,210 @@
+name: Deploy dev
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: istat-ndc-schema-ass-cms-dev
+  GCP_REGION: europe-west8
+  ARTIFACT_REGISTRY: europe-west8-docker.pkg.dev/istat-ndc-schema-ass-cms-dev/schema-assistant
+
+jobs:
+  ci:
+    name: Required CI gate
+    uses: ./.github/workflows/ci.yml
+    with:
+      verify_docker: false
+      base_sha: ${{ github.event.before }}
+      head_sha: ${{ github.sha }}
+
+  detect:
+    name: Detect changed modules
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.changes.outputs.web }}
+      agent: ${{ steps.changes.outputs.agent }}
+      ingestion: ${{ steps.changes.outputs.ingestion }}
+      services_any: ${{ steps.service-matrix.outputs.any }}
+      services_matrix: ${{ steps.service-matrix.outputs.matrix }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect affected modules
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: bash .github/scripts/detect-modules.sh "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Build service deployment matrix
+        id: service-matrix
+        env:
+          WEB_CHANGED: ${{ steps.changes.outputs.web }}
+          AGENT_CHANGED: ${{ steps.changes.outputs.agent }}
+        run: |
+          set -euo pipefail
+          if [[ "$WEB_CHANGED" == true && "$AGENT_CHANGED" == true ]]; then
+            matrix='{"include":[{"module":"web","dockerfile":"apps/web/Dockerfile","service":"schema-assistant-web-dev"},{"module":"agent","dockerfile":"services/agent/Dockerfile","service":"schema-assistant-agent-dev"}]}'
+            any=true
+          elif [[ "$WEB_CHANGED" == true ]]; then
+            matrix='{"include":[{"module":"web","dockerfile":"apps/web/Dockerfile","service":"schema-assistant-web-dev"}]}'
+            any=true
+          elif [[ "$AGENT_CHANGED" == true ]]; then
+            matrix='{"include":[{"module":"agent","dockerfile":"services/agent/Dockerfile","service":"schema-assistant-agent-dev"}]}'
+            any=true
+          else
+            matrix='{"include":[]}'
+            any=false
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "any=$any" >> "$GITHUB_OUTPUT"
+
+  deploy-services:
+    name: Deploy ${{ matrix.module }}
+    needs: detect
+    if: needs.detect.outputs.services_any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.services_matrix) }}
+    steps:
+      - name: Check out deployed commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check required GitHub variables
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          CICD_SERVICE_ACCOUNT: ${{ vars.GCP_CICD_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test -n "$WIF_PROVIDER" || { echo "Missing repository variable GCP_WORKLOAD_IDENTITY_PROVIDER" >&2; exit 1; }
+          test -n "$CICD_SERVICE_ACCOUNT" || { echo "Missing repository variable GCP_CICD_SERVICE_ACCOUNT" >&2; exit 1; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CICD_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          version: "548.0.0"
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Artifact Registry authentication
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and publish commit image
+        id: image
+        env:
+          IMAGE: ${{ env.ARTIFACT_REGISTRY }}/${{ matrix.module }}
+        run: bash .github/scripts/publish-image.sh "$IMAGE" "${{ matrix.dockerfile }}" "$GITHUB_SHA"
+
+      - name: Update only the selected Cloud Run service
+        env:
+          DIGEST_IMAGE: ${{ steps.image.outputs.digest_image }}
+        run: |
+          gcloud run services update "${{ matrix.service }}" \
+            --project="$GCP_PROJECT_ID" \
+            --region="$GCP_REGION" \
+            --image="$DIGEST_IMAGE" \
+            --quiet
+
+      - name: Write deployment summary
+        env:
+          DIGEST_IMAGE: ${{ steps.image.outputs.digest_image }}
+        run: |
+          {
+            echo "### Dev deployment"
+            echo "- Module: ${{ matrix.module }}"
+            echo "- Service: ${{ matrix.service }}"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Image: $DIGEST_IMAGE"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-ingestion:
+    name: Publish ingestion image
+    needs: detect
+    if: needs.detect.outputs.ingestion == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out published commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check required GitHub variables
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          CICD_SERVICE_ACCOUNT: ${{ vars.GCP_CICD_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test -n "$WIF_PROVIDER" || { echo "Missing repository variable GCP_WORKLOAD_IDENTITY_PROVIDER" >&2; exit 1; }
+          test -n "$CICD_SERVICE_ACCOUNT" || { echo "Missing repository variable GCP_CICD_SERVICE_ACCOUNT" >&2; exit 1; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CICD_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          version: "548.0.0"
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Artifact Registry authentication
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and publish ingestion image
+        id: image
+        env:
+          IMAGE: ${{ env.ARTIFACT_REGISTRY }}/ingestion
+        run: bash .github/scripts/publish-image.sh "$IMAGE" jobs/ingestion/Dockerfile "$GITHUB_SHA"
+
+      - name: Confirm that the job was not updated or executed
+        env:
+          DIGEST_IMAGE: ${{ steps.image.outputs.digest_image }}
+        run: |
+          {
+            echo "### Ingestion image published"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Image: $DIGEST_IMAGE"
+            echo "- Cloud Run Job unchanged; use the manual ingestion deployment workflow."
+            echo "- No ingestion execution was started."
+          } >> "$GITHUB_STEP_SUMMARY"

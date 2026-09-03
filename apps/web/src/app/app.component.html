@@ -1,0 +1,136 @@
+<app-global-spinner></app-global-spinner>
+
+<div class="modal fade disclaimer-modal" id="disclaimerModal" tabindex="-1" aria-labelledby="disclaimerModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title" id="disclaimerModalLabel">Disclaimer</h1>
+      </div>
+
+      <div class="modal-body">
+        <p>
+          Questa è un'applicazione in fase di sviluppo basata su Intelligenza Artificiale, collegata
+          al servizio <strong>schema.gov.it</strong>. Le informazioni sono generate da un'IA e potrebbero
+          contenere errori o imprecisioni.
+        </p>
+
+        <p>
+          Questo servizio non sostituisce una consulenza professionale.
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary disclaimer-accept" (click)="acceptDisclaimer()">
+          Accetto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="schema-app-shell">
+
+
+  <main class="schema-main">
+    <section class="assistant-panel" aria-label="Assistente AI schema.gov.it">
+      <div *ngIf="resetSuccess" class="alert alert-success feedback-alert" role="alert">
+        Reset della chat avvenuto con successo.
+      </div>
+
+      <div class="chat-messages" #chatMessages>
+        <div *ngFor="let msg of activeChatMessages; let i = index" class="message-row" [ngClass]="msg.role">
+          <ng-container *ngIf="msg.role === 'assistant'; else userMessage">
+            <span class="assistant-badge">Assistente AI</span>
+
+            <article class="message-card assistant-card" [ngClass]="{ 'is-error': msg.error }">
+              <markdown [data]="msg.content" class="md-content"></markdown>
+            </article>
+          </ng-container>
+
+          <ng-template #userMessage>
+            <span class="user-badge">Tu</span>
+
+            <article class="message-card user-card">
+              <markdown [data]="msg.content" class="md-content">
+              </markdown>
+            </article>
+          </ng-template>
+        </div>
+
+        <div *ngIf="loading" class="message-row assistant">
+          <span class="assistant-badge">Assistente AI</span>
+          <div class="progress-spinner progress-spinner-active size-sm">
+            <span class="visually-hidden">Caricamento...</span>
+          </div>
+        </div>
+      </div>
+
+      <button *ngIf="showScrollBottom" class="scroll-bottom-btn" type="button" (click)="scrollToBottom()"
+        title="Vai in fondo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"
+          aria-hidden="true">
+          <path
+            d="M8 1a.75.75 0 0 1 .75.75v9.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 1 1 1.06-1.06l3.22 3.22V1.75A.75.75 0 0 1 8 1z" />
+        </svg>
+      </button>
+
+      <div class="chat-end">
+
+      </div>
+
+      <form class="question-form" (submit)="askAgent($event)">
+        <label for="chatQuery" class="question-label">Chiedi all'Assistente AI del catalogo</label>
+
+        <textarea id="chatQuery" name="chatQuery" [(ngModel)]="query" class="chat-textarea"
+          [placeholder]="placeholderText" [disabled]="loading" rows="3" (keydown)="handleKeyDown($event)"
+          (input)="autoResize($event)" maxlength="4000"></textarea>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-primary" [disabled]="loading" data-bs-toggle="modal"
+            data-bs-target="#resetChatModal">
+            Nuova chat
+          </button>
+
+          <button type="submit" class="btn btn-primary" [disabled]="!query.trim() || loading">
+            {{ loading ? 'Attendi...' : 'Invia' }}
+          </button>
+        </div>
+      </form>
+
+      <footer class="partner-logos" aria-label="Loghi partner">
+        <div class="loghi">
+          <div class="istatLogo">
+            <a></a>
+          </div>
+          <div class="dxcLogo">
+            <span class="powered-text">Powered by</span>
+            <a></a>
+          </div>
+        </div>
+      </footer>
+    </section>
+  </main>
+</div>
+
+<div class="modal fade reset-modal" id="resetChatModal" tabindex="-1" aria-labelledby="resetChatModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title" id="resetChatModalLabel">Nuova chat</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+      </div>
+
+      <div class="modal-body">
+        Con questa azione eliminerai tutta la cronologia della chat. Sei sicuro di voler procedere?
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" (click)="resetChat()">Nuova
+          Chat</button>
+      </div>
+    </div>
+  </div>
+</div>

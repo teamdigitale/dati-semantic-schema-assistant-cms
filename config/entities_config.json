@@ -1,0 +1,158 @@
+{
+  "entities": [
+    {
+      "name": "istat",
+      "repo_url": "https://github.com/istat/ndc-ontologie-vocabolari-controllati",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "schemas",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "istat_ontologies",
+        "schema_ttl": "istat_ttl_schemas",
+        "schema_yaml": "istat_yaml_schemas",
+        "vocabulary": "istat_vocabularies"
+      }
+    },
+    {
+      "name": "inps",
+      "repo_url": "https://github.com/INPS-it/NDC",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "schemas",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "inps_ontologies",
+        "schema_ttl": "inps_ttl_schemas",
+        "schema_yaml": "inps_yaml_schemas",
+        "vocabulary": "inps_vocabularies"
+      }
+    },
+    {
+      "name": "inail",
+      "repo_url": "https://github.com/InailUfficio5/inail-ndc",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "schemas",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "inail_ontologies",
+        "schema_ttl": "inail_ttl_schemas",
+        "schema_yaml": "inail_yaml_schemas",
+        "vocabulary": "inail_vocabularies"
+      }
+    },
+    {
+      "name": "italia",
+      "repo_url": "https://github.com/italia/dati-semantic-assets",
+      "assets_path": "",
+      "ontologies_folder": "Ontologie",
+      "schemas_folder": "Presentazioni",
+      "vocabularies_folder": "VocabolariControllati",
+      "collections": {
+        "ontology": "italia_ontologies",
+        "schema_ttl": "italia_ttl_schemas",
+        "schema_yaml": "italia_yaml_schemas",
+        "vocabulary": "italia_vocabularies"
+      }
+    },
+      {
+      "name": "PCM-DIPE",
+      "repo_url": "https://github.com/PCM-DIPE/public-investment",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "PCM-DIPE_ontologies",
+        "schema_ttl": "PCM-DIPE_ttl_schemas",
+        "schema_yaml": "PCM-DIPE_yaml_schemas",
+        "vocabulary": "PCM-DIPE_vocabularies"
+      }
+    },
+      {
+      "name": "inapp",
+      "repo_url": "https://github.com/InappRepo/inapp-ndc",
+      "assets_path": "assets",
+      "ontologies_folder": "",
+      "schemas_folder": "",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "inapp_ontologies",
+        "schema_ttl": "inapp_ttl_schemas",
+        "schema_yaml": "inapp_yaml_schemas",
+        "vocabulary": "inapp_vocabularies"
+      }
+    },
+      {
+      "name": "Agenzia-del-Demanio",
+      "repo_url": "https://github.com/Agenzia-del-Demanio/NDC",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "schemas",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "Agenzia-del-Demanio_ontologies",
+        "schema_ttl": "Agenzia-del-Demanio_ttl_schemas",
+        "schema_yaml": "Agenzia-del-Demanio_yaml_schemas",
+        "vocabulary": "Agenzia-del-Demanio_vocabularies"
+      }
+    },
+      {
+      "name": "isprambiente",
+      "repo_url": "https://github.com/isprambiente/dati-semantic",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "isprambiente_ontologies",
+        "schema_ttl": "isprambiente_ttl_schemas",
+        "schema_yaml": "isprambiente_yaml_schemas",
+        "vocabulary": "isprambiente_vocabularies"
+      }
+    },
+      {
+      "name": "Mlps-Dg-Innovazione-Divisione-III",
+      "repo_url": "https://github.com/MlpsDgInnovazioneDivisioneIII/mlps-ndc",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "schemas",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "Mlps-Dg-Innovazione-Divisione-III_ontologies",
+        "schema_ttl": "Mlps-Dg-Innovazione-Divisione-III_ttl_schemas",
+        "schema_yaml": "Mlps-Dg-Innovazione-Divisione-III_yaml_schemas",
+        "vocabulary": "Mlps-Dg-Innovazione-Divisione-III_vocabularies"
+      }
+    },
+      {
+      "name": "Bluarancio",
+      "repo_url": "https://github.com/Bluarancio/Leo-OpenData",
+      "assets_path": "",
+      "ontologies_folder": "Ontologie",
+      "schemas_folder": "",
+      "vocabularies_folder": "VocabolariControllati",
+      "collections": {
+        "ontology": "Bluarancio_ontologies",
+        "schema_ttl": "Bluarancio_ttl_schemas",
+        "schema_yaml": "Bluarancio_yaml_schemas",
+        "vocabulary": "Bluarancio_vocabularies"
+      }
+    },
+      {
+      "name": "Dipartimento-Funzione-Pubblica-PCM",
+      "repo_url": "https://github.com/DipartimentoFunzionePubblicaPCM/DFP-NDC",
+      "assets_path": "assets",
+      "ontologies_folder": "ontologies",
+      "schemas_folder": "schemas",
+      "vocabularies_folder": "controlled-vocabularies",
+      "collections": {
+        "ontology": "Dipartimento-Funzione-Pubblica-PCM_ontologies",
+        "schema_ttl": "Dipartimento-Funzione-Pubblica-PCM_ttl_schemas",
+        "schema_yaml": "Dipartimento-Funzione-Pubblica-PCM_yaml_schemas",
+        "vocabulary": "Dipartimento-Funzione-Pubblica-PCM_vocabularies"
+      }
+    }
+  ]
+}

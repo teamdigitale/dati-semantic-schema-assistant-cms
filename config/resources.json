@@ -1,0 +1,43 @@
+{
+  "ontologies": {
+    "collection_suffix": "ontologies",
+    "keywords": ["ontologia", "ontologie", "catalogo", "risorse semantiche", "risorse"]
+  },
+  "ttl_schemas": {
+    "collection_suffix": "ttl_schemas",
+    "keywords": ["schema", "schemi", "catalogo", "schemi dati", "schema dati", "risorse semantiche", "risorse"]
+  },
+  "yaml_schemas": {
+    "collection_suffix": "yaml_schemas",
+    "keywords": ["yaml", "openapi", "schema", "schemi", "catalogo", "schemi dati", "schema dati", "risorse semantiche", "risorse"]
+  },
+  "vocabularies": {
+    "collection_suffix": "vocabularies",
+    "keywords": [
+      "vocabolario",
+      "vocabolari",
+      "classificazione",
+      "classificazioni",
+      "classification",
+      "classifications",
+      "controlled vocabulary",
+      "controlled-vocabulary",
+      "beneficio",
+      "benefici",
+      "prestazione",
+      "prestazioni",
+      "siuss",
+      "catalogo",
+      "risorse semantiche",
+      "risorse"
+    ]
+  },
+  "context_documents": {
+    "collection_suffix": "context_documents",
+    "keywords": ["www.schema.gov.it", "schema.gov.it", "catalogo", "documento", "documenti"]
+  },
+  "dates_collection": {
+    "collection_suffix": "dates_collection",
+    "keywords": ["data", "date", "creazione", "immissione"]
+  }
+}

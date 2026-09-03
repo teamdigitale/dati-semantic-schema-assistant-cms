@@ -1,0 +1,122 @@
+name: Deploy ingestion image to dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Full main-branch commit SHA to deploy. Leave empty for the selected main revision."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-ingestion-dev
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: istat-ndc-schema-ass-cms-dev
+  GCP_REGION: europe-west8
+  INGESTION_IMAGE: europe-west8-docker.pkg.dev/istat-ndc-schema-ass-cms-dev/schema-assistant/ingestion
+  INGESTION_JOB: schema-assistant-ingestion-dev
+
+jobs:
+  deploy:
+    name: Update ingestion job image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out main branch history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate selected commit
+        id: commit
+        env:
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          commit_sha="${REQUESTED_SHA:-$GITHUB_SHA}"
+          if [[ ! "$commit_sha" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "commit_sha must be a full 40-character lowercase Git SHA." >&2
+            exit 1
+          fi
+          git cat-file -e "${commit_sha}^{commit}"
+          if ! git merge-base --is-ancestor "$commit_sha" origin/main; then
+            echo "The selected commit is not part of main." >&2
+            exit 1
+          fi
+          echo "sha=$commit_sha" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-$commit_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Check required GitHub variables
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          CICD_SERVICE_ACCOUNT: ${{ vars.GCP_CICD_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test -n "$WIF_PROVIDER" || { echo "Missing repository variable GCP_WORKLOAD_IDENTITY_PROVIDER" >&2; exit 1; }
+          test -n "$CICD_SERVICE_ACCOUNT" || { echo "Missing repository variable GCP_CICD_SERVICE_ACCOUNT" >&2; exit 1; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CICD_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          version: "548.0.0"
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Resolve the published image digest
+        id: image
+        env:
+          TAG: ${{ steps.commit.outputs.tag }}
+        run: |
+          set -euo pipefail
+          digest="$(
+            gcloud artifacts docker images describe "${INGESTION_IMAGE}:${TAG}" \
+              --format='value(image_summary.digest)'
+          )"
+          if [[ ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "The selected commit does not have a valid published ingestion image." >&2
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "digest_image=${INGESTION_IMAGE}@${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update the ingestion job image without executing it
+        env:
+          DIGEST_IMAGE: ${{ steps.image.outputs.digest_image }}
+        run: |
+          gcloud run jobs update "$INGESTION_JOB" \
+            --project="$GCP_PROJECT_ID" \
+            --region="$GCP_REGION" \
+            --image="$DIGEST_IMAGE" \
+            --quiet
+
+      - name: Write deployment summary
+        env:
+          DIGEST_IMAGE: ${{ steps.image.outputs.digest_image }}
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          {
+            echo "### Manual ingestion image deployment"
+            echo "- Job: $INGESTION_JOB"
+            echo "- Commit: $COMMIT_SHA"
+            echo "- Image: $DIGEST_IMAGE"
+            echo "- The job image was updated; no ingestion execution was started."
+          } >> "$GITHUB_STEP_SUMMARY"
