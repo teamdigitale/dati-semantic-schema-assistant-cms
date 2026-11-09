@@ -124,6 +124,24 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  setResponseLinkAttributes(message: HTMLElement): void {
+    const newWindowWarning = " (apre in un'altra finestra)";
+    for (const link of message.querySelectorAll<HTMLAnchorElement>('markdown a[href]')) {
+      const label =
+        link.textContent?.trim() ||
+        link.getAttribute('aria-label')?.trim() ||
+        link.querySelector('img')?.alt.trim() ||
+        link.href;
+
+      link.target = '_blank';
+      link.relList.add('noopener');
+      link.setAttribute(
+        'aria-label',
+        label.endsWith(newWindowWarning) ? label : label + newWindowWarning,
+      );
+    }
+  }
+
   autoResize(event: Event): void {
     const textarea = event.target as HTMLTextAreaElement;
     textarea.style.height = '84px';
