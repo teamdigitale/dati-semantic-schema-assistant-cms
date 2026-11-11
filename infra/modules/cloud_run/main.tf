@@ -62,11 +62,11 @@ resource "google_cloud_run_v2_service" "web" {
   }
 
   lifecycle {
-    # Application images are deployed outside Terraform. gcloud also records
-    # its client metadata, which must not create infrastructure drift.
+    # Application releases manage image digests and revision names outside Terraform.
     ignore_changes = [
       client,
       client_version,
+      template[0].revision,
       template[0].containers[0].image,
     ]
   }
@@ -230,11 +230,11 @@ resource "google_cloud_run_v2_service" "agent" {
   }
 
   lifecycle {
-    # Application images are deployed outside Terraform. gcloud also records
-    # its client metadata, which must not create infrastructure drift.
+    # Application releases manage image digests and revision names outside Terraform.
     ignore_changes = [
       client,
       client_version,
+      template[0].revision,
       template[0].containers[0].image,
     ]
   }
