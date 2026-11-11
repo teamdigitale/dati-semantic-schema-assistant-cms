@@ -1,2 +1,10 @@
 /* You can add global styles to this file, and also import other style files */
 @import 'bootstrap-italia/src/scss/bootstrap-italia';
+
+.sr-only {
+  @include visually-hidden();
+}
+
+app-root .assistant-card .md-content a[target='_blank']::after {
+  content: ' ↗';
+}

@@ -8,7 +8,8 @@ import { buildSecurityHeaders } from './security-headers.mjs';
 const port = Number(process.env.PORT || 8080);
 const staticRoot = resolve(process.env.STATIC_DIR || 'public');
 const agentServiceUrl = process.env.AGENT_SERVICE_URL || '';
-const maxRequestBodyBytes = 64 * 1024;
+// Signed model parts retain the full reply alongside the bounded transcript.
+const maxRequestBodyBytes = 512 * 1024;
 let cachedIdentityToken;
 
 const mimeTypes = {

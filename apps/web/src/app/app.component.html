@@ -38,30 +38,38 @@
         Reset della chat avvenuto con successo.
       </div>
 
-      <div class="chat-messages" #chatMessages>
-        <div *ngFor="let msg of activeChatMessages; let i = index" class="message-row" [ngClass]="msg.role">
-          <ng-container *ngIf="msg.role === 'assistant'; else userMessage">
-            <span class="assistant-badge">Assistente AI</span>
+      <div class="chat-scroll" #chatMessages>
+        <div class="chat-messages" role="log" aria-label="messaggi" aria-live="polite" [attr.aria-busy]="loading">
+          <div *ngFor="let msg of activeChatMessages" class="message-row" [ngClass]="msg.role">
+            <ng-container *ngIf="msg.role === 'assistant'; else userMessage">
+              <span class="assistant-badge" aria-hidden="true">Assistente AI</span>
 
-            <article class="message-card assistant-card" [ngClass]="{ 'is-error': msg.error }">
-              <markdown [data]="msg.content" class="md-content"></markdown>
-            </article>
-          </ng-container>
+              <article class="message-card assistant-card" tabindex="0" [ngClass]="{ 'is-error': msg.error }"
+                #assistantMessage>
+                <p class="sr-only">L'assistente AI ha risposto</p>
+                <markdown [data]="msg.content" class="md-content"
+                  (ready)="setResponseLinkAttributes(assistantMessage)"></markdown>
+              </article>
+            </ng-container>
 
-          <ng-template #userMessage>
-            <span class="user-badge">Tu</span>
+            <ng-template #userMessage>
+              <span class="user-badge" aria-hidden="true">Tu</span>
 
-            <article class="message-card user-card">
-              <markdown [data]="msg.content" class="md-content">
-              </markdown>
-            </article>
-          </ng-template>
+              <article class="message-card user-card" tabindex="0">
+                <p class="sr-only">Tu hai chiesto</p>
+                <markdown [data]="msg.content" class="md-content"></markdown>
+              </article>
+            </ng-template>
+          </div>
         </div>
 
-        <div *ngIf="loading" class="message-row assistant">
-          <span class="assistant-badge">Assistente AI</span>
-          <div class="progress-spinner progress-spinner-active size-sm">
-            <span class="visually-hidden">Caricamento...</span>
+        <!-- Keep loading announcements outside the busy conversation log. -->
+        <div role="status">
+          <div *ngIf="loading" class="message-row assistant">
+            <span class="assistant-badge" aria-hidden="true">Assistente AI</span>
+            <div class="progress-spinner progress-spinner-active size-sm">
+              <span class="sr-only">Caricamento...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -98,7 +106,8 @@
         </div>
       </form>
 
-      <footer class="partner-logos" aria-label="Loghi partner">
+      <footer class="partner-logos">
+        <p class="sr-only">Loghi partner</p>
         <div class="loghi">
           <div class="istatLogo">
             <a></a>

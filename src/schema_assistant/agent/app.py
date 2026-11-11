@@ -46,7 +46,10 @@ async def validation_exception_handler(
     request_id = getattr(request.state, "request_id", None)
     logger.warning(
         "request_validation_failed",
-        extra={"request_id": request_id, "errors": exc.errors()},
+        extra={
+            "request_id": request_id,
+            "errors": [{"loc": error["loc"], "type": error["type"]} for error in exc.errors()],
+        },
     )
     return JSONResponse(
         status_code=422,
@@ -205,6 +208,7 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse | JSONResp
         system_instruction=build_system_instruction(has_context=bool(model_context)),
         user_message=request.message,
     )
+    model_content = result.model_content if not guarded_response.intervened else None
     if guarded_response.intervened:
         logger.warning(
             "chat_response_guardrail_applied",
@@ -228,7 +232,14 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse | JSONResp
             "output_tokens": result.usage.output_tokens,
             "total_tokens": result.usage.total_tokens,
             "finish_reason": result.usage.finish_reason,
-            "thinking_budget": settings.thinking_budget,
+            "chat_model": settings.chat_model,
+            "model_version": result.model_version,
+            "chat_location": settings.chat_location,
+            "thinking_level": settings.thinking_level,
+            "signed_history_messages": sum(
+                item.model_content is not None for item in request.history
+            ),
+            "signed_response": model_content is not None,
             "max_output_tokens": settings.max_output_tokens,
             "history_messages": len(request.history),
             "rag_enabled": settings.rag_enabled,
@@ -257,6 +268,7 @@ def chat(request: ChatRequest, http_request: Request) -> ChatResponse | JSONResp
 
     return ChatResponse(
         answer=guarded_response.answer,
+        model_content=model_content,
         sources=retrieval_result.sources if retrieval_result else [],
         usage=result.usage,
         cost_status=settings.cost_status,
