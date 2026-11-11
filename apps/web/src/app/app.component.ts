@@ -11,15 +11,22 @@ import { Modal } from 'bootstrap';
 
 type ChatRole = 'assistant' | 'user';
 
+interface ChatModelContent {
+  role: 'model';
+  parts: Array<{ text?: string | null; thought?: false | null; thought_signature?: string | null }>;
+}
+
 interface ChatMessage {
   role: ChatRole;
   content: string;
+  model_content?: ChatModelContent;
   error?: boolean;
   timestamp: string;
 }
 
 interface AgentResponse {
   answer: string;
+  model_content?: ChatModelContent | null;
 }
 
 const MAX_HISTORY_MESSAGES = 12;
@@ -102,7 +109,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe({
         next: (response) => {
-          this.pushMessage('assistant', response.answer);
+          this.pushMessage('assistant', response.answer, false, response.model_content ?? undefined);
           this.loading = false;
         },
         error: (error: HttpErrorResponse) => {
@@ -174,13 +181,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.hideResetAlertLater();
   }
 
-  private chatHistory(): Array<Pick<ChatMessage, 'role' | 'content'>> {
+  private chatHistory(): Array<Pick<ChatMessage, 'role' | 'content' | 'model_content'>> {
     return this.activeChatMessages
       .filter((message) => !message.error)
       .slice(-MAX_HISTORY_MESSAGES)
-      .map(({ role, content }) => ({
+      .map(({ role, content, model_content }) => ({
         role,
         content: this.historyContent(content),
+        model_content,
       }));
   }
 
@@ -219,10 +227,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
-  private pushMessage(role: ChatRole, content: string, error = false): void {
+  private pushMessage(
+    role: ChatRole,
+    content: string,
+    error = false,
+    modelContent?: ChatModelContent,
+  ): void {
     this.activeChatMessages.push({
       role,
       content,
+      model_content: modelContent,
       error,
       timestamp: new Date().toISOString(),
     });

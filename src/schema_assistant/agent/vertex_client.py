@@ -5,9 +5,10 @@ from typing import Any, cast
 
 from google import genai
 from google.genai import types
+from pydantic import ValidationError
 
 from schema_assistant.agent.config import AgentSettings, get_settings
-from schema_assistant.agent.models import ChatMessage, ChatUsage
+from schema_assistant.agent.models import ChatMessage, ChatModelContent, ChatUsage
 from schema_assistant.agent.prompts import build_system_instruction
 
 
@@ -15,6 +16,8 @@ from schema_assistant.agent.prompts import build_system_instruction
 class VertexChatResult:
     answer: str
     usage: ChatUsage
+    model_version: str | None
+    model_content: ChatModelContent | None
 
 
 class VertexChatClient:
@@ -26,7 +29,8 @@ class VertexChatClient:
         self._client = genai.Client(
             vertexai=True,
             project=settings.project_id,
-            location=settings.location,
+            location=settings.chat_location,
+            http_options=types.HttpOptions(api_version="v1"),
         )
 
     def answer(
@@ -44,9 +48,8 @@ class VertexChatClient:
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 max_output_tokens=self._settings.max_output_tokens,
-                temperature=0.2,
                 thinking_config=types.ThinkingConfig(
-                    thinking_budget=self._settings.thinking_budget,
+                    thinking_level=types.ThinkingLevel(self._settings.thinking_level),
                 ),
             ),
         )
@@ -54,6 +57,8 @@ class VertexChatClient:
         return VertexChatResult(
             answer=(response.text or "").strip(),
             usage=_extract_usage(response),
+            model_version=response.model_version,
+            model_content=_signed_model_content(response),
         )
 
     @staticmethod
@@ -66,6 +71,11 @@ class VertexChatClient:
         contents: list[types.Content] = []
 
         for item in history:
+            if item.model_content is not None:
+                contents.append(
+                    types.Content.model_validate(item.model_content.model_dump(exclude_none=True))
+                )
+                continue
             contents.append(
                 types.Content(
                     role="model" if item.role == "assistant" else "user",
@@ -94,6 +104,17 @@ class VertexChatClient:
 @lru_cache(maxsize=1)
 def get_vertex_chat_client() -> VertexChatClient:
     return VertexChatClient(get_settings())
+
+
+def _signed_model_content(response: types.GenerateContentResponse) -> ChatModelContent | None:
+    if not response.candidates or response.candidates[0].content is None:
+        return None
+    # Preserve the exact text parts. Do not expose tool calls or thought summaries.
+    content = response.candidates[0].content
+    try:
+        return ChatModelContent.model_validate(content.model_dump(exclude_none=True))
+    except ValidationError:
+        return None
 
 
 def _extract_usage(response: Any) -> ChatUsage:

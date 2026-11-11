@@ -97,10 +97,20 @@ docker push $IMAGE
 gcloud run services update schema-assistant-agent-dev --project istat-ndc-schema-ass-cms-dev --region europe-west8 --image $IMAGE
 ```
 
-The agent defaults to `THINKING_BUDGET=512` and `MAX_OUTPUT_TOKENS=2048`.
+The agent uses `CHAT_MODEL=gemini-3.5-flash-lite` at `CHAT_LOCATION=eu` with
+`THINKING_LEVEL=LOW` and `MAX_OUTPUT_TOKENS=2048`. The separate
+`GOOGLE_CLOUD_LOCATION=europe-west8` still applies to embeddings.
 With `RAG_ENABLED=true`, it embeds the question, searches Firestore Vector,
 and returns sources in the `sources` field. A question is answered only when a
 chunk is within `RAG_MAX_DISTANCE=0.45`.
+
+When changing the chat model, create the agent revision with `--no-traffic`
+and a temporary tag. Send a knowledge-base question to the tag URL, using the
+base service URL as the identity-token audience. Send a follow-up with both
+history entries and copy the first response's `model_content` onto the
+assistant entry. Check the sources and the `chat_completed` log for the model
+version, chat location and signed history count before routing traffic to the
+new revision. Deploy the compatible web image before promoting the agent.
 
 ## 6. Knowledge base and ingestion
 

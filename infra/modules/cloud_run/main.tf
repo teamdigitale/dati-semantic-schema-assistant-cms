@@ -130,7 +130,12 @@ resource "google_cloud_run_v2_service" "agent" {
 
       env {
         name  = "CHAT_MODEL"
-        value = "gemini-2.5-flash"
+        value = "gemini-3.5-flash-lite"
+      }
+
+      env {
+        name  = "CHAT_LOCATION"
+        value = "eu"
       }
 
       env {
@@ -204,8 +209,8 @@ resource "google_cloud_run_v2_service" "agent" {
       }
 
       env {
-        name  = "THINKING_BUDGET"
-        value = "512"
+        name  = "THINKING_LEVEL"
+        value = "LOW"
       }
 
       resources {
