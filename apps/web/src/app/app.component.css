@@ -239,6 +239,7 @@
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 16px;
@@ -486,7 +487,6 @@
     min-height: 40px;
     padding: 8px 16px;
     font-size: 12px;
-    width: 25%;
   }
 
   .partner-logos {
@@ -511,12 +511,19 @@
 
   .disclaimer-modal .modal-footer,
   .reset-modal .modal-footer {
-    padding: 18px 28px;
+    padding: 18px clamp(12px, 5vw, 28px);
   }
 
   .disclaimer-accept {
     min-height: 56px;
     font-size: 17px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .disclaimer-modal .modal-dialog,
+  .reset-modal .modal-dialog {
+    margin-inline: clamp(14px, 5vw, 28px);
   }
 }
 
